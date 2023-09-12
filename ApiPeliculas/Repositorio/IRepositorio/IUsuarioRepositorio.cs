@@ -5,10 +5,10 @@ namespace ApiPeliculas.Repositorio.IRepositorio
 {
     public interface IUsuarioRepositorio
     {
-        ICollection<Usuario> GetUsuario();
+        ICollection<Usuario> GetUsuarios();
         Usuario GetUsuario(int usuarioId);
         bool isUniqueUser(string nombreUsuario);
-        Task<UsuarioLoginRespuestaDto> Login(UsuarioLoginDto usuarioLoginDto);
+        public UsuarioLoginRespuestaDto Login(UsuarioLoginDto usuarioLoginDto);
         Task<Usuario> Registro(UsuarioRegistroDto usuarioRegistroDto);
 
     }

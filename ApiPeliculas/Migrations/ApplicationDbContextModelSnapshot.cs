@@ -100,7 +100,7 @@ namespace ApiPeliculas.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Usuarios");
+                    b.ToTable("Usuario");
                 });
 
             modelBuilder.Entity("ApiPeliculas.Modelos.Pelicula", b =>

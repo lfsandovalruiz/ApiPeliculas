@@ -2,7 +2,11 @@
 using ApiPeliculas.Modelos;
 using ApiPeliculas.Modelos.Dtos;
 using ApiPeliculas.Repositorio.IRepositorio;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 using XSystem.Security.Cryptography;
+using System.Security.Claims;
 
 namespace ApiPeliculas.Repositorio
 {
@@ -10,9 +14,11 @@ namespace ApiPeliculas.Repositorio
     {
 
         private readonly ApplicationDbContext _db;
+        private readonly string claveSecreta;
 
-        public UsuarioRepositorio(ApplicationDbContext db) {
+        public UsuarioRepositorio(ApplicationDbContext db, IConfiguration configuration) {
             _db = db;
+            claveSecreta = configuration.GetValue<string>("ApiSettings:Secreta");
         }
 
 
@@ -20,7 +26,7 @@ namespace ApiPeliculas.Repositorio
         {
             return _db.Usuario.FirstOrDefault(usuario => usuario.Id == usuarioId);
         }
-        public ICollection<Usuario> GetUsuario()
+        public ICollection<Usuario> GetUsuarios()
         {
             return _db.Usuario.OrderBy(usuario => usuario.NombreUsuario).ToList();
         }
@@ -50,9 +56,47 @@ namespace ApiPeliculas.Repositorio
             return usuario;
         }
 
-        public Task<UsuarioLoginRespuestaDto> Login(UsuarioLoginDto usuarioLoginDto)
+        public UsuarioLoginRespuestaDto Login(UsuarioLoginDto usuarioLoginDto)
         {
-            throw new NotImplementedException();
+
+            var passwordCifrado = obtenerMd5(usuarioLoginDto.Password);
+
+            var usuario = _db.Usuario.FirstOrDefault(u =>
+                u.NombreUsuario.ToLower() == usuarioLoginDto.NombreUsuario.ToLower()
+                &&
+                u.Password == passwordCifrado
+            );
+
+            if (usuario == null) return new UsuarioLoginRespuestaDto
+            {
+                Token = string.Empty,
+                Usuario = null
+            };
+
+            // Creación del token
+            var manejadorToken = new JwtSecurityTokenHandler();
+
+            var key = Encoding.ASCII.GetBytes(claveSecreta);
+
+            var tokenDescryptor = new SecurityTokenDescriptor() {
+                Subject = new ClaimsIdentity(new Claim[]
+                {
+                    new Claim(type: ClaimTypes.Name, usuario.NombreUsuario),
+                    new Claim(type: ClaimTypes.Role, usuario.Role)
+                }),
+                Expires = DateTime.UtcNow.AddDays(7),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = manejadorToken.CreateToken(tokenDescryptor);
+
+            UsuarioLoginRespuestaDto usuarioLoginRespuestaDto = new UsuarioLoginRespuestaDto() {
+                Token = manejadorToken.WriteToken(token),
+                Usuario = usuario
+            };
+
+            return usuarioLoginRespuestaDto;
+
         }
 
         public static string obtenerMd5(string valor)
